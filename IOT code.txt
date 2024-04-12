@@ -1,0 +1,233 @@
+#include <WiFi.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+
+Adafruit_MPU6050 mpu; // connect the SCL pin to GPIO 22 and the SDA pin to GPIO 21.
+
+#define FORCE_SENSOR_PIN 36 // ESP32 pin GPIO36 (ADC0): the FSR and 10K pulldown are connected to A0
+#define FORCE_SENSOR_PIN1 34
+
+const char* ssid     = "AndroidAP"; // Your ssid
+const char* password = "87654321"; // Your Password
+char status;
+WiFiServer server(80);
+
+void setup() {
+ Serial.begin(115200);
+  while (!Serial)
+    delay(10); // will pause Zero, Leonardo, etc until serial console opens
+
+  Serial.println("Adafruit MPU6050 test!");
+
+  // Try to initialize!
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  Serial.println("MPU6050 Found!");
+
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  Serial.print("Accelerometer range set to: ");
+  switch (mpu.getAccelerometerRange()) {
+  case MPU6050_RANGE_2_G:
+    Serial.println("+-2G");
+    break;
+  case MPU6050_RANGE_4_G:
+    Serial.println("+-4G");
+    break;
+  case MPU6050_RANGE_8_G:
+    Serial.println("+-8G");
+    break;
+  case MPU6050_RANGE_16_G:
+    Serial.println("+-16G");
+    break;
+  }
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  Serial.print("Gyro range set to: ");
+  switch (mpu.getGyroRange()) {
+  case MPU6050_RANGE_250_DEG:
+    Serial.println("+- 250 deg/s");
+    break;
+  case MPU6050_RANGE_500_DEG:
+    Serial.println("+- 500 deg/s");
+    break;
+  case MPU6050_RANGE_1000_DEG:
+    Serial.println("+- 1000 deg/s");
+    break;
+  case MPU6050_RANGE_2000_DEG:
+    Serial.println("+- 2000 deg/s");
+    break;
+  }
+
+  mpu.setFilterBandwidth(MPU6050_BAND_5_HZ);
+  Serial.print("Filter bandwidth set to: ");
+  switch (mpu.getFilterBandwidth()) {
+  case MPU6050_BAND_260_HZ:
+    Serial.println("260 Hz");
+    break;
+  case MPU6050_BAND_184_HZ:
+    Serial.println("184 Hz");
+    break;
+  case MPU6050_BAND_94_HZ:
+    Serial.println("94 Hz");
+    break;
+  case MPU6050_BAND_44_HZ:
+    Serial.println("44 Hz");
+    break;
+  case MPU6050_BAND_21_HZ:
+    Serial.println("21 Hz");
+    break;
+  case MPU6050_BAND_10_HZ:
+    Serial.println("10 Hz");
+    break;
+  case MPU6050_BAND_5_HZ:
+    Serial.println("5 Hz");
+    break;
+  }
+
+  Serial.println("");
+  delay(100);
+
+
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi is connected");
+  server.begin();
+  Serial.println("Server started");
+  Serial.println(WiFi.localIP());
+}
+
+void loop() { 
+int analogReading = analogRead(FORCE_SENSOR_PIN);
+
+  Serial.print("The force sensor value = ");
+  Serial.print(analogReading); // print the raw analog reading
+
+
+    int analogReading1 = analogRead(FORCE_SENSOR_PIN1);
+
+  Serial.print("The force sensor value 2 = ");
+  Serial.print(analogReading1); // print the raw analog reading
+
+ 
+  //delay(1000);
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  /* Print out the values */
+  Serial.print("Acceleration X: ");
+  Serial.print(a.acceleration.x);
+  Serial.print(", Y: ");
+  Serial.print(a.acceleration.y);
+  Serial.print(", Z: ");
+  Serial.print(a.acceleration.z);
+  Serial.println(" m/s^2");
+
+  Serial.print("Rotation X: ");
+  Serial.print(g.gyro.x);
+  Serial.print(", Y: ");
+  Serial.print(g.gyro.y);
+  Serial.print(", Z: ");
+  Serial.print(g.gyro.z);
+  Serial.println(" rad/s");
+
+  Serial.print("Temperature: ");
+  Serial.print(temp.temperature);
+  Serial.println(" degC");
+
+  Serial.println("");
+  //delay(500);
+
+  
+ 
+
+  WiFiClient client = server.available();
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/html");
+  client.println("Connection: close");  // the connection will be closed after completion of the response
+  client.println("Refresh: 10");  // update the page after 10 sec
+  client.println();
+  client.println("<!DOCTYPE HTML>");
+  client.println("<html>");
+  client.println("<head>");
+  client.println("<style>html { font-family: Fantasy; display: block; margin: 0px auto; text-align: center;color: #333333; background-color: #ccffb3;}");
+  client.println("body{margin-top: 50px;}");
+  client.println("h1 {margin: 50px auto 30px; font-size: 50px; text-align: center;}");
+  client.println(".side_adjust{display: inline-block;vertical-align: middle;position: relative;}");
+  client.println(".text1{font-weight: 180; padding-left: 15px; font-size: 50px; width: 170px; text-align: left; color: #3498db;}");
+  client.println(".data1{font-weight: 180; padding-left: 80px; font-size: 50px;color: #3498db;}");
+  client.println(".text2{font-weight: 180; font-size: 50px; width: 170px; text-align: left; color: #3498db;}");
+  client.println(".data2{font-weight: 180; padding-left: 150px; font-size: 50px;color: #3498db;}");
+  client.println(".data{padding: 10px;}");
+  client.println("</style>");
+  client.println("</head>");
+  client.println("<body>");
+  client.println("<div id=\"webpage\">");   
+  client.println("<h1>ESP32 Foot Pressure Monitoring</h1>");
+
+  //client.println("<div class=\"side_adjust text1\">m</div>");
+  client.println("</div>");
+  client.println("<div class=\"data\">");
+  client.println("<div class=\"side_adjust text2\">Right leg Front side force:</div>");
+  client.println("<div class=\"side_adjust data2\">");
+  client.print(analogReading);
+  client.println("</div>");
+  client.println("</div>");
+  client.println("</body>");
+  client.println("</html>");
+
+  client.println("</div>");
+  client.println("<div class=\"data\">");
+  client.println("<div class=\"side_adjust text2\">Right leg Back side force:</div>");
+  client.println("<div class=\"side_adjust data2\">");
+  client.print(analogReading1);
+  client.println("</div>");
+  client.println("</div>");
+  client.println("</body>");
+  client.println("</html>");
+
+
+  client.println("</div>");
+  client.println("<div class=\"data\">");
+  client.println("<div class=\"side_adjust text2\">Right Foot Acceleration X:</div>");
+  client.println("<div class=\"side_adjust data2\">");
+  client.print(a.acceleration.x);
+  client.println("</div>");
+  client.println("</div>");
+  client.println("</body>");
+  client.println("</html>");
+
+
+
+  client.println("</div>");
+  client.println("<div class=\"data\">");
+  client.println("<div class=\"side_adjust text2\">Right Foot Acceleration Y:</div>");
+  client.println("<div class=\"side_adjust data2\">");
+  client.print(a.acceleration.y);
+  client.println("</div>");
+  client.println("</div>");
+  client.println("</body>");
+  client.println("</html>");
+
+
+
+  client.println("</div>");
+  client.println("<div class=\"data\">");
+  client.println("<div class=\"side_adjust text2\">Right Foot Acceleration Z:</div>");
+  client.println("<div class=\"side_adjust data2\">");
+  client.print(a.acceleration.z);
+  client.println("</div>");
+  client.println("</div>");
+  client.println("</body>");
+  client.println("</html>");
+
+}
